@@ -1,0 +1,7 @@
+include LICENSE
+include bitrix24
+<<<<<<< HEAD
+include README.rst
+=======
+include README.md
+>>>>>>> a4dbdba3abc7bbb6024b32a1383cf6d7552a94c4
