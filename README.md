@@ -4,7 +4,7 @@ Easy way to communicate with bitrix24 portal over REST without OAuth 2.0
 
 ## Description
 
-Bitrix24-python-rest is a simple API wrapper for working with Bitrix24
+Bitrix24 REST is a simple API wrapper for working with Bitrix24
 REST API over webhooks.
 
 ## Features
@@ -19,7 +19,7 @@ REST API over webhooks.
 
 ## Installation
 ```
-pip install bitrix24-python-rest
+pip install bitrix24-rest
 ```
 
 ## Quickstart
