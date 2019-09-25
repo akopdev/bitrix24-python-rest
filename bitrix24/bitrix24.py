@@ -11,6 +11,7 @@ This module implements the Bitrix24 REST API.
 """
 import requests
 from time import sleep
+from urllib.parse import urlparse
 from .exceptions import BitrixError
 
 
@@ -27,8 +28,14 @@ class Bitrix24(object):
     """
 
     def __init__(self, domain, timeout=60):
-        self.domain = domain
+        self.domain = self._prepare_domain(domain)
         self.timeout = timeout
+
+    def _prepare_domain(string):    
+        """Normalize user passed domain to a valid one."""
+        o = urlparse(string)
+        user_id, code = o.path.split('/')[2:4]
+        return "{0}://{1}/rest/{2}/{3}".format(o.scheme, o.netloc, user_id, code)
 
     def _prepare_params(self, params):
         """Transforms list of params to a valid bitrix array."""
