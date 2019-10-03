@@ -37,17 +37,24 @@ class Bitrix24(object):
         user_id, code = o.path.split('/')[2:4]
         return "{0}://{1}/rest/{2}/{3}".format(o.scheme, o.netloc, user_id, code)
 
-    def _prepare_params(self, params):
+    def _prepare_params(self, params, prev = ''):
         """Transforms list of params to a valid bitrix array."""
-
-        new_params = {}
-        for index, value in params.items():
-            if type(value) is dict:
-                for i, v in value.items():
-                    new_params['%s[%s]' % (index, i)] = v
-            else:
-                new_params[index] = value
-        return new_params
+        if isinstance(params, dict):
+            ret = ''
+            for key, value in params.items():
+                if isinstance(value, dict):
+                    if prev:
+                        key = "{0}[{1}]".format(prev, key)
+                    ret += self._prepare_params(value, key)
+                elif (isinstance(value, list) or isinstance(value, tuple)) and len(value) > 0:
+                    for offset, val in enumerate(value):
+                        ret += "{0}[{1}][{2}]={3}&".format(prev, key, offset, val)
+                else:
+                    if prev:
+                        ret += "{0}[{1}]={2}&".format(prev, key, value)
+                    else:
+                        ret += "{0}={1}&".format(key, value)
+            return ret
 
     def callMethod(self, method, **params):
         """Calls a REST method with specified parameters.
@@ -75,9 +82,9 @@ class Bitrix24(object):
         
         if 'error' in r:
             raise BitrixError(r)
-        if 'page' not in params:
-            params['page'] = 1
-        if 'next' in r and r['total'] > (r['next']*params['page']):
-            params['page'] += 1
+        if 'start' not in params:
+            params['start'] = 0
+        if 'next' in r and r['total'] > params['start']:
+            params['start'] += 50
             return r['result'] + self.callMethod(method, **params)
         return r['result']
