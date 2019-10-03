@@ -31,16 +31,16 @@ class Bitrix24(object):
         self.domain = self._prepare_domain(domain)
         self.timeout = timeout
 
-    def _prepare_domain(string):    
+    def _prepare_domain(self, string):
         """Normalize user passed domain to a valid one."""
         o = urlparse(string)
         user_id, code = o.path.split('/')[2:4]
         return "{0}://{1}/rest/{2}/{3}".format(o.scheme, o.netloc, user_id, code)
 
-    def _prepare_params(self, params, prev = ''):
+    def _prepare_params(self, params, prev=''):
         """Transforms list of params to a valid bitrix array."""
+        ret = ''
         if isinstance(params, dict):
-            ret = ''
             for key, value in params.items():
                 if isinstance(value, dict):
                     if prev:
@@ -48,13 +48,21 @@ class Bitrix24(object):
                     ret += self._prepare_params(value, key)
                 elif (isinstance(value, list) or isinstance(value, tuple)) and len(value) > 0:
                     for offset, val in enumerate(value):
-                        ret += "{0}[{1}][{2}]={3}&".format(prev, key, offset, val)
+                        if isinstance(val, dict):
+                            ret += self._prepare_params(
+                                val, "{0}[{1}][{2}]".format(prev, key, offset))
+                        else:
+                            if prev:
+                                ret += "{0}[{1}][{2}]={3}&".format(
+                                    prev, key, offset, val)
+                            else:
+                                ret += "{0}[{1}]={2}&".format(key, offset, val)
                 else:
                     if prev:
                         ret += "{0}[{1}]={2}&".format(prev, key, value)
                     else:
                         ret += "{0}={1}&".format(key, value)
-            return ret
+        return ret
 
     def callMethod(self, method, **params):
         """Calls a REST method with specified parameters.
@@ -79,7 +87,7 @@ class Bitrix24(object):
             # Looks like we need to wait until expires limitation time by Bitrix24 API
             sleep(2)
             return self.callMethod(method, **params)
-        
+
         if 'error' in r:
             raise BitrixError(r)
         if 'start' not in params:
