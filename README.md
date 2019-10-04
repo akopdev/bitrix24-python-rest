@@ -56,6 +56,12 @@ except BitrixError as message:
 List methods return all available items at once. For large collections
 of data use limits.
 
+## Tests
+
+```
+python -m unittest discover
+```
+
 ## Author
 
 Akop Kesheshyan - <akop.kesheshyan@icloud.com>

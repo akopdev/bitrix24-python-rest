@@ -28,12 +28,19 @@ class Bitrix24(object):
     """
 
     def __init__(self, domain, timeout=60):
+        """Create Bitrix24 API object
+        :param domain: str Bitrix24 webhook domain
+        :param timeout: int Timeout for API request in seconds
+        """
         self.domain = self._prepare_domain(domain)
         self.timeout = timeout
 
-    def _prepare_domain(self, string):
+    def _prepare_domain(self, domain):
         """Normalize user passed domain to a valid one."""
-        o = urlparse(string)
+        if domain == '' or not isinstance(domain, str):
+            raise Exception('Empty domain')
+
+        o = urlparse(domain)
         user_id, code = o.path.split('/')[2:4]
         return "{0}://{1}/rest/{2}/{3}".format(o.scheme, o.netloc, user_id, code)
 
