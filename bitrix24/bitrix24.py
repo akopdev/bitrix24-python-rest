@@ -11,6 +11,7 @@ This module implements the Bitrix24 REST API.
 """
 import requests
 from time import sleep
+from urllib.parse import urlparse
 from .exceptions import BitrixError
 
 
@@ -27,20 +28,48 @@ class Bitrix24(object):
     """
 
     def __init__(self, domain, timeout=60):
-        self.domain = domain
+        """Create Bitrix24 API object
+        :param domain: str Bitrix24 webhook domain
+        :param timeout: int Timeout for API request in seconds
+        """
+        self.domain = self._prepare_domain(domain)
         self.timeout = timeout
 
-    def _prepare_params(self, params):
-        """Transforms list of params to a valid bitrix array."""
+    def _prepare_domain(self, domain):
+        """Normalize user passed domain to a valid one."""
+        if domain == '' or not isinstance(domain, str):
+            raise Exception('Empty domain')
 
-        new_params = {}
-        for index, value in params.items():
-            if type(value) is dict:
-                for i, v in value.items():
-                    new_params['%s[%s]' % (index, i)] = v
-            else:
-                new_params[index] = value
-        return new_params
+        o = urlparse(domain)
+        user_id, code = o.path.split('/')[2:4]
+        return "{0}://{1}/rest/{2}/{3}".format(o.scheme, o.netloc, user_id, code)
+
+    def _prepare_params(self, params, prev=''):
+        """Transforms list of params to a valid bitrix array."""
+        ret = ''
+        if isinstance(params, dict):
+            for key, value in params.items():
+                if isinstance(value, dict):
+                    if prev:
+                        key = "{0}[{1}]".format(prev, key)
+                    ret += self._prepare_params(value, key)
+                elif (isinstance(value, list) or isinstance(value, tuple)) and len(value) > 0:
+                    for offset, val in enumerate(value):
+                        if isinstance(val, dict):
+                            ret += self._prepare_params(
+                                val, "{0}[{1}][{2}]".format(prev, key, offset))
+                        else:
+                            if prev:
+                                ret += "{0}[{1}][{2}]={3}&".format(
+                                    prev, key, offset, val)
+                            else:
+                                ret += "{0}[{1}]={2}&".format(key, offset, val)
+                else:
+                    if prev:
+                        ret += "{0}[{1}]={2}&".format(prev, key, value)
+                    else:
+                        ret += "{0}={1}&".format(key, value)
+        return ret
 
     def callMethod(self, method, **params):
         """Calls a REST method with specified parameters.
@@ -65,12 +94,12 @@ class Bitrix24(object):
             # Looks like we need to wait until expires limitation time by Bitrix24 API
             sleep(2)
             return self.callMethod(method, **params)
-        
+
         if 'error' in r:
             raise BitrixError(r)
-        if 'page' not in params:
-            params['page'] = 1
-        if 'next' in r and r['total'] > (r['next']*params['page']):
-            params['page'] += 1
+        if 'start' not in params:
+            params['start'] = 0
+        if 'next' in r and r['total'] > params['start']:
+            params['start'] += 50
             return r['result'] + self.callMethod(method, **params)
         return r['result']
