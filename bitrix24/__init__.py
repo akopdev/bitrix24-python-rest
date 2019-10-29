@@ -21,7 +21,7 @@ usage:
 Copyright (c) 2019 by Akop Kesheshyan.
 """
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __author__ = 'Akop Kesheshyan <akop.kesheshyan@icloud.com>'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2019 Akop Kesheshyan'

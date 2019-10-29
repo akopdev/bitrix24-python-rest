@@ -101,5 +101,11 @@ class Bitrix24(object):
             params['start'] = 0
         if 'next' in r and r['total'] > params['start']:
             params['start'] += 50
-            return r['result'] + self.callMethod(method, **params)
+            data = self.callMethod(method, **params)
+            if isinstance(r['result'], dict):
+                result = r['result'].copy()
+                result.update(data)
+            else:
+                result = r['result'] + data
+            return result
         return r['result']
