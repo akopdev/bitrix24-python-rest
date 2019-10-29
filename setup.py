@@ -25,7 +25,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='bitrix24-rest',
-    version='1.1.0',
+    version='1.1.1',
     install_requires=['requests'],
     packages=find_packages(),
     url='https://github.com/akopkesheshyan/bitrix24-python-rest',
