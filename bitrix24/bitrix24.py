@@ -47,23 +47,16 @@ class Bitrix24(object):
     def _prepare_params(self, params, prev=''):
         """Transforms list of params to a valid bitrix array."""
         ret = ''
+        if (isinstance(params, list) or isinstance(params, tuple)) and len(params) > 0:
+            params = dict(enumerate(params))
         if isinstance(params, dict):
             for key, value in params.items():
+                if (isinstance(params, list) or isinstance(params, tuple)) and len(params) > 0:
+                    params = dict(enumerate(params))
                 if isinstance(value, dict):
                     if prev:
                         key = "{0}[{1}]".format(prev, key)
                     ret += self._prepare_params(value, key)
-                elif (isinstance(value, list) or isinstance(value, tuple)) and len(value) > 0:
-                    for offset, val in enumerate(value):
-                        if isinstance(val, dict):
-                            ret += self._prepare_params(
-                                val, "{0}[{1}][{2}]".format(prev, key, offset))
-                        else:
-                            if prev:
-                                ret += "{0}[{1}][{2}]={3}&".format(
-                                    prev, key, offset, val)
-                            else:
-                                ret += "{0}[{1}]={2}&".format(key, offset, val)
                 else:
                     if prev:
                         ret += "{0}[{1}]={2}&".format(prev, key, value)
