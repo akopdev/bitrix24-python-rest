@@ -9,6 +9,8 @@ This module implements the Bitrix24 REST API.
 :copyright: (c) 2019 by Akop Kesheshyan.
 
 """
+import warnings
+
 import requests
 from time import sleep
 from urllib.parse import urlparse
@@ -27,13 +29,14 @@ class Bitrix24(object):
       >>> bx24.callMethod('crm.product.list')
     """
 
-    def __init__(self, domain, timeout=60):
+    def __init__(self, domain, timeout=60, safe=True):
         """Create Bitrix24 API object
         :param domain: str Bitrix24 webhook domain
         :param timeout: int Timeout for API request in seconds
         """
         self.domain = self._prepare_domain(domain)
         self.timeout = timeout
+        self.safe = safe
 
     def _prepare_domain(self, domain):
         """Normalize user passed domain to a valid one."""
@@ -85,9 +88,21 @@ class Bitrix24(object):
             p = self._prepare_params(params)
 
             if method.rsplit('.', 1)[0] in ['add', 'update', 'delete', 'set']:
-                r = requests.post(url, data=p, timeout=self.timeout).json()
+                r = requests.post(url, data=p, timeout=self.timeout, verify=self.safe).json()
             else:
-                r = requests.get(url, params=p, timeout=self.timeout).json()
+                r = requests.get(url, params=p, timeout=self.timeout, verify=self.safe)
+                try:
+                    r = r.json()
+                except requests.exceptions.JSONDecodeError as e:
+                    warnings.warn("bitrix24: JSON decode error...")
+                    if r.status_code == 403:
+                        warnings.warn(f"bitrix24: Forbidden: {method}. Check your bitrix24 webhook settings. Returning None! ")
+                        return None
+                    elif r.ok:
+                        return r.content
+
+
+
         except ValueError:
             if r['error'] not in 'QUERY_LIMIT_EXCEEDED':
                 raise BitrixError(r)
