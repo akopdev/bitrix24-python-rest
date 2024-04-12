@@ -1,17 +1,11 @@
-# -*- coding: utf-8 -*-
-
-"""
-Bitrix24.exceptions
-~~~~~~~~~~~~~~~~~~~
-
-This module contains the set of Bitrix24 REST exceptions.
-
-:copyright: (c) 2019 by Akop Kesheshyan.
-
-"""
+#   ____  _ _        _      ____  _  _     ____  _____ ____ _____
+#  | __ )(_) |_ _ __(_)_  _|___ \| || |   |  _ \| ____/ ___|_   _|
+#  |  _ \| | __| '__| \ \/ / __) | || |_  | |_) |  _| \___ \ | |
+#  | |_) | | |_| |  | |>  < / __/|__   _| |  _ <| |___ ___) || |
+#  |____/|_|\__|_|  |_/_/\_\_____|  |_|   |_| \_\_____|____/ |_|
 
 
 class BitrixError(ValueError):
-    def __init__(self, response):
-        super().__init__(response['error_description'])
-        self.code = response['error']
+    def __init__(self, message: str, code: int = 500):
+        self.message = message
+        self.code = code
