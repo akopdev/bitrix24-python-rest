@@ -6,6 +6,7 @@
 
 import warnings
 from time import sleep
+from typing import Any, Dict
 from urllib.parse import urlparse
 
 import requests
@@ -36,13 +37,13 @@ class Bitrix24:
     def _prepare_domain(self, domain: str):
         """Normalize user passed domain to a valid one."""
         if not domain:
-            raise Exception("Empty domain")
+            raise BitrixError("Empty domain")
 
         o = urlparse(domain)
         user_id, code = o.path.split("/")[2:4]
         return "{0}://{1}/rest/{2}/{3}".format(o.scheme, o.netloc, user_id, code)
 
-    def _prepare_params(self, params, prev=""):
+    def _prepare_params(self, params: Dict[str, Any], prev=""):
         """
         Transform list of parameters to a valid bitrix array.
 
@@ -80,7 +81,8 @@ class Bitrix24:
                         ret += "{0}={1}&".format(key, value)
         return ret
 
-    def request(self, url, method, p):
+    def request(self, method, p):
+        url = "{0}/{1}.json".format(self.domain, method)
         if method.rsplit(".", 1)[0] in ["add", "update", "delete", "set"]:
             r = requests.post(url, data=p, timeout=self.timeout, verify=self.safe).json()
         else:
@@ -111,12 +113,11 @@ class Bitrix24:
             Returning the REST method response as an array, an object or a scalar
         """
         if not method or len(method.split(".")) < 3:
-            raise BitrixError("Empty method")
+            raise BitrixError("Wrong method name", 400)
 
         try:
-            url = "{0}/{1}.json".format(self.domain, method)
             p = self._prepare_params(params)
-            r = self.request(url, method, p)
+            r = self.request(method, p)
             if not r:
                 return None
         except ValueError:
