@@ -7,5 +7,4 @@
 from .bitrix24 import Bitrix24
 from .exceptions import BitrixError
 
-__version__ = "2.0.0"
 __all__ = ["Bitrix24", "BitrixError"]

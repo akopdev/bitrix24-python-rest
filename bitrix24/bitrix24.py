@@ -4,12 +4,12 @@
 #  | |_) | | |_| |  | |>  < / __/|__   _| |  _ <| |___ ___) || |
 #  |____/|_|\__|_|  |_/_/\_\_____|  |_|   |_| \_\_____|____/ |_|
 
-import warnings
-from time import sleep
-from typing import Any, Dict
+import asyncio
+import itertools
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
-import requests
+from aiohttp import ClientSession
 
 from .exceptions import BitrixError
 
@@ -21,7 +21,7 @@ class Bitrix24:
     Provides an easy way to communicate with Bitrix24 portal over REST without OAuth.
     """
 
-    def __init__(self, domain: str, timeout: int = 60, safe: bool = True):
+    def __init__(self, domain: str, timeout: int = 60):
         """
         Create Bitrix24 API object.
 
@@ -32,9 +32,8 @@ class Bitrix24:
         """
         self.domain = self._prepare_domain(domain)
         self.timeout = timeout
-        self.safe = safe
 
-    def _prepare_domain(self, domain: str):
+    def _prepare_domain(self, domain: str) -> str:
         """Normalize user passed domain to a valid one."""
         if not domain:
             raise BitrixError("Empty domain")
@@ -43,7 +42,7 @@ class Bitrix24:
         user_id, code = o.path.split("/")[2:4]
         return "{0}://{1}/rest/{2}/{3}".format(o.scheme, o.netloc, user_id, code)
 
-    def _prepare_params(self, params: Dict[str, Any], prev=""):
+    def _prepare_params(self, params: Dict[str, Any], prev="") -> str:
         """
         Transform list of parameters to a valid bitrix array.
 
@@ -81,26 +80,42 @@ class Bitrix24:
                         ret += "{0}={1}&".format(key, value)
         return ret
 
-    def request(self, method, p):
-        url = "{0}/{1}.json".format(self.domain, method)
-        if method.rsplit(".", 1)[0] in ["add", "update", "delete", "set"]:
-            r = requests.post(url, data=p, timeout=self.timeout, verify=self.safe).json()
-        else:
-            r = requests.get(url, params=p, timeout=self.timeout, verify=self.safe)
-        try:
-            r = r.json()
-        except requests.exceptions.JSONDecodeError:
-            warnings.warn("bitrix24: JSON decode error...")
-            if r.status_code == 403:
-                warnings.warn(
-                    f"bitrix24: Forbidden: {method}. "
-                    "Check your bitrix24 webhook settings. Returning None! "
-                )
-                return None
-            elif r.ok:
-                return r.content
+    async def request(self, method: str, params: str = None) -> Dict[str, Any]:
+        async with ClientSession() as session:
+            async with session.get(
+                f"{self.domain}/{method}.json", params=params, timeout=self.timeout
+            ) as resp:
+                if resp.status not in [200, 201]:
+                    raise BitrixError(f"HTTP error: {resp.status}")
+                response = await resp.json()
+                if "error" in response:
+                    raise BitrixError(response["error_description"], response["error"])
+                return response
 
-    def callMethod(self, method: str, **params):
+    async def call(self, method: str, params: Dict[str, Any] = {}, start: Optional[int] = None):
+        """Async call a REST method with specified parameters.
+
+        This method is a replacement for the callMethod method, which is synchronous.
+
+        Parameters
+        ----------
+            method (str): REST method name
+            params (dict): Optional arguments which will be converted to a POST request string
+        """
+        if start is not None:
+            params["start"] = start
+
+        payload = self._prepare_params(params)
+        res = await self.request(method, payload)
+
+        if "next" in res and start is None:
+            tasks = [self.call(method, params, start=start) for start in range(res["total"] // 50)]
+            items = await asyncio.gather(*tasks)
+            result = list(itertools.chain(*items))
+            return res["result"] + result
+        return res["result"]
+
+    def callMethod(self, method: str, params: Dict[str, Any] = {}, **kwargs):
         """Call a REST method with specified parameters.
 
         Parameters
@@ -112,32 +127,16 @@ class Bitrix24:
         -------
             Returning the REST method response as an array, an object or a scalar
         """
-        if not method or len(method.split(".")) < 3:
+        if not method or len(method.split(".")) < 2:
             raise BitrixError("Wrong method name", 400)
 
         try:
-            p = self._prepare_params(params)
-            r = self.request(method, p)
-            if not r:
-                return None
-        except ValueError:
-            if r["error"] not in "QUERY_LIMIT_EXCEEDED":
-                raise BitrixError(message=r["error_description"], code=r["error"])
-            # Looks like we need to wait until expires limitation time by Bitrix24 API
-            sleep(2)
-            return self.callMethod(method, **params)
-
-        if "error" in r:
-            raise BitrixError(r)
-        if "start" not in params:
-            params["start"] = 0
-        if "next" in r and r["total"] > params["start"]:
-            params["start"] += 50
-            data = self.callMethod(method, **params)
-            if isinstance(r["result"], dict):
-                result = r["result"].copy()
-                result.update(data)
-            else:
-                result = r["result"] + data
-            return result
-        return r["result"]
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(self.call(method, params or kwargs))
+            loop.close()
+        else:
+            result = asyncio.ensure_future(self.call(method, params or kwargs))
+        return result

@@ -7,13 +7,12 @@
 from distutils.core import setup
 from os import path
 from setuptools import find_packages
-from bitrix24 import __version__
 
 dir = path.abspath(path.dirname(__file__))
 
 setup(
     name="bitrix24-rest",
-    version=__version__,
+    version="2.0.0",
     packages=find_packages(),
     install_requires=[
         "aiohttp",
@@ -28,6 +27,7 @@ setup(
             "pytest",
             "pytest-cov",
             "pytest-asyncio",
+            "aioresponses",
             "pytest-aiohttp"
         ],
     },
