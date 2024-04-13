@@ -8,7 +8,7 @@ from bitrix24 import Bitrix24
 async def test_async_call_method(b24: Bitrix24):
     with aioresponses() as m:
         m.get(
-            "https://example.bitrix24.com/rest/1/123456789/user.get.json?ID=1",
+            "https://example.bitrix24.com/rest/1/123456789/user.get.json?ID=1&start=0",
             payload={"result": [{"ID": 1}]},
             status=200,
         )
