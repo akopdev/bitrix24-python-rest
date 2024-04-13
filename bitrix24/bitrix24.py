@@ -74,14 +74,8 @@ class Bitrix24(object):
                         ret += "{0}={1}&".format(key, value)
         return ret
 
-    def callMethod(self, method, **params):
-        """Calls a REST method with specified parameters.
-
-       :param url: REST method name.
-       :param \*\*params: Optional arguments which will be converted to a POST request string.
-       :return: Returning the REST method response as an array, an object or a scalar
-       """
-
+    def _call_method(self, method, **params):
+        """Calls a REST method with specified parameters."""
         try:
             url = '{0}/{1}.json'.format(self.domain, method)
 
@@ -108,19 +102,82 @@ class Bitrix24(object):
                 raise BitrixError(r)
             # Looks like we need to wait until expires limitation time by Bitrix24 API
             sleep(2)
-            return self.callMethod(method, **params)
+            return self._call_method(method, **params)
 
         if 'error' in r:
             raise BitrixError(r)
+
+        return r
+    
+    
+    def callMethodIter(self, method, **params):
+        """Calls a REST method with specified parameters.
+
+        :param url: REST method name.
+        :param \*\*params: Optional arguments which will be converted to a POST request string.
+        :return: Returning the REST method response generator
+        """
         if 'start' not in params:
             params['start'] = 0
+
+        r = self._call_method(method, **params)
+
         if 'next' in r and r['total'] > params['start']:
             params['start'] += 50
-            data = self.callMethod(method, **params)
-            if isinstance(r['result'], dict):
-                result = r['result'].copy()
-                result.update(data)
+            yield from self.callMethodIter(method, **params)
+        
+        yield r['result']
+      
+
+    def callMethod(self, method, **params):
+        """Calls a REST method with specified parameters.
+
+        :param url: REST method name.
+        :param \*\*params: Optional arguments which will be converted to a POST request string.
+        :return: Returning the REST method response as list, dict or scalar
+        """
+        
+        result_dict = {}
+        result_list = []
+  
+        for r in self.callMethodIter(method, **params):
+            if (isinstance(r, dict)):
+                result_dict.update(r)
+            elif (isinstance(r, list)):
+                result_list.extend(r)
+       
+        return result_dict or result_list or r
+
+
+    def callMethodList(self, method, id=0, key=None, **params):
+        """Calls a REST method with specified parameters and fast fetch list of all records.
+
+        :param url: REST method name.
+        :param id: id of start record.
+        :param key: Result access key, used if method result is a dict, not a list.
+        :param \*\*params: Optional arguments which will be converted to a POST request string.
+        :return: Returning the REST method response list of records
+        """
+        params['start'] = -1
+        params['order'] = {'ID': 'asc'}
+        
+        if 'filter' not in params:
+            params['filter'] = {}
+        
+        result = []
+
+        while True:
+            params['filter'].update({'>ID': id})
+            
+            r = self._call_method(method, **params)['result']
+            if isinstance(r, dict):
+                r = r.get(key, [])
+
+            if r:
+                result.extend(r)
+                id = r[-1]['id']
             else:
-                result = r['result'] + data
-            return result
-        return r['result']
+                break
+
+        return result
+        
