@@ -4,20 +4,19 @@ Easy way to communicate with bitrix24 portal over REST without OAuth 2.0
 
 ## Description
 
-Bitrix24 REST is a simple API wrapper for working with Bitrix24
-REST API over webhooks.
+Bitrix24 REST is an API wrapper for working with Bitrix24 REST API over webhooks.
+No OAuth 2.0 required. It's easy to use and super lightweight, with minimal dependencies.
 
 ## Features
 
-- Works both with cloud and on-premises versions of bitrix24, much more
-- Super easy for setting up. No OAuth implemetation required
-- Compatible with latests Bitrix24 REST API
-
-## Requirements
-- Python 2.6+ or 3.2+
-- requests
+- Works with both cloud and on-premises versions of Bitrix24.
+- Super easy to setup. No OAuth 2.0 infrastructure required.
+- Built with data analysis in mind and fully compatible with Jupyter Notebook.
+- Fetch paginated data at once without hassle.
+- Works with large datasets and handles rate limits.
 
 ## Installation
+
 ```
 pip install bitrix24-rest
 ```
@@ -25,45 +24,55 @@ pip install bitrix24-rest
 ## Quickstart
 
 ```python
-from bitrix24 import *
+from bitrix24 import Bitrix24
 
 bx24 = Bitrix24('https://example.bitrix24.com/rest/1/33olqeits4avuyqu')
 
 print(bx24.callMethod('crm.product.list'))
 ```
 
+In async mode:
+
+```python
+import asyncio
+from bitrix24 import bitrix24
+
+async def main():
+    bx24 = Bitrix24('https://example.bitrix24.com/rest/1/33olqeits4avuyqu')
+    result = await bx24.callMethod('crm.product.list')
+    print(result)
+
+asyncio.run(main())
+```
+
 ## Advanced usage
 
-You can define filters and additional parameters in any order:
-
-```python
-bx24.callMethod('crm.deal.list',
-                order={'STAGE_ID': 'ASC'},
-                filter={'>PROBABILITY': 50},
-                select=['ID', 'TITLE', 'STAGE_ID', 'PROBABILITY'])
-```
-
-Catch the server error with exception:
-
-```python
-try:
-    bx24.callMethod('tasks.task.add', fields={'TITLE': 'task for test', 'RESPONSIBLE_ID': 1})
-except BitrixError as message:
-    print(message)
-```
+- [Using filters and additional parameters](docs/using-filters-and-additional-parameters.md)
+- [Working with large datasets](docs/working-with-large-datasets.md)
+- [Disabling certificate verification](docs/disabling-certificate-verification.md)
 
 ## Notes
-List methods return all available items at once. For large collections
-of data use limits.
 
-## Tests
+List methods return all available items at once. For large collections of data use limits.
 
+## Development
+
+New contributers and pull requests are welcome. If you have any questions or suggestions, feel free to open an issue.
+
+Code comes with makefile for easy code base management. You can check `make help` for more details.
+
+```sh
+make init install # to create a local virtual environment and install dependencies
+
+make test # to run tests
+
+make lint # to run linter
 ```
-python -m unittest discover
-```
 
-## Author
+I suggest to use `make all` before committing your changes as it will run all the necessary checks.
 
-Akop Kesheshyan - <akop.kesheshyan@icloud.com>
+## Support this project
 
-New contributers and pull requests are welcome.
+You can support this project by starring ⭐, sharing 📤, and contributing. 
+
+You can also support the author by buying him a coffee ☕. Click sponsor button on the top of the page.
