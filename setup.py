@@ -8,7 +8,7 @@ from distutils.core import setup
 from os import path
 from setuptools import find_packages
 
-dir = path.abspath(path.dirname(__file__))
+directory = path.abspath(path.dirname(__file__))
 
 setup(
     name="bitrix24-rest",
@@ -36,7 +36,7 @@ setup(
     author="Akop Kesheshyan",
     author_email="hello@akop.dev",
     description="Easy way to communicate with bitrix24 portal over REST without OAuth",
-    long_description=open(path.join(dir, "README.md"), encoding="utf-8").read(),
+    long_description=open(path.join(directory, "README.md"), encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     keywords="bitrix24 api rest",
     classifiers=[
