@@ -158,7 +158,7 @@ class Bitrix24:
         except RuntimeError:
             warnings.warn(
                 "You are using `callMethod` method in a synchronous way. "
-                "Starting from version 3, this method will be completly asynchronous."
+                "Starting from version 3, this method will be completely asynchronous."
                 "Please consider updating your code",
                 DeprecationWarning,
             )
