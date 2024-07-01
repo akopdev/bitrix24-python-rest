@@ -115,7 +115,7 @@ class Bitrix24:
                 return response
 
     async def _call(
-        self, method: str, params: Dict[str, Any] = {}, start: int = 0
+        self, method: str, params: Dict[str, Any] = None, start: int = 0
     ) -> Dict[str, Any]:
         """Async call a REST method with specified parameters.
 
@@ -125,6 +125,8 @@ class Bitrix24:
             params (dict): Optional arguments which will be converted to a POST request string
             start (int): Offset for pagination
         """
+        if params is None:
+            params = {}
         params["start"] = start
 
         payload = self._prepare_params(params)
@@ -139,7 +141,7 @@ class Bitrix24:
             return res["result"] + result
         return res["result"]
 
-    def callMethod(self, method: str, params: Dict[str, Any] = {}, **kwargs) -> Dict[str, Any]:
+    def callMethod(self, method: str, params: Dict[str, Any] = None, **kwargs) -> Dict[str, Any]:
         """Call a REST method with specified parameters.
 
         Parameters
@@ -151,6 +153,8 @@ class Bitrix24:
         -------
             Returning the REST method response as an array, an object or a scalar
         """
+        if params is None:
+            params = {}
         if not method or len(method.split(".")) < 2:
             raise BitrixError("Wrong method name", 400)
 
