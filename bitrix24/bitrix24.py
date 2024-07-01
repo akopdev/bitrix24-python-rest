@@ -169,8 +169,10 @@ class Bitrix24:
             )
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(self._call(method, params or kwargs))
-            loop.close()
+            try:
+                result = loop.run_until_complete(self._call(method, params or kwargs))
+            finally:
+                loop.close()
         else:
             result = asyncio.ensure_future(self._call(method, params or kwargs))
         return result
