@@ -150,7 +150,7 @@ class Bitrix24:
         -------
             Returning the REST method response as an array, an object or a scalar
         """
-        if not method or len(method.split(".")) < 2:
+        if not method:
             raise BitrixError("Wrong method name", 400)
 
         try:
