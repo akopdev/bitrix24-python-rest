@@ -48,7 +48,8 @@ class Bitrix24:
         self._retry_after = int(retry_after)
         self._verify_ssl = bool(safe)
 
-    def _prepare_domain(self, domain: str) -> str:
+    @staticmethod
+    def _prepare_domain(domain: str) -> str:
         """Normalize user passed domain to a valid one."""
         o = urlparse(domain)
         if not o.scheme or not o.netloc:
