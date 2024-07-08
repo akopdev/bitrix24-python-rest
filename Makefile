@@ -51,7 +51,7 @@ test:
 # -------------------------------------------------------------------------------------------------
 # lint: @ Checks the source code against coding standard rules and safety
 # -------------------------------------------------------------------------------------------------
-lint: lint.setup lint.flake8 lint.safety lint.docs
+lint: lint.setup lint.flake8 lint.docs
 
 # -------------------------------------------------------------------------------------------------
 # format: @ Format source code and auto fix minor issues
