@@ -12,7 +12,7 @@ directory = path.abspath(path.dirname(__file__))
 
 setup(
     name="bitrix24-rest",
-    version="2.0.1",
+    version="2.0.2",
     packages=find_packages(),
     install_requires=[
         "aiohttp",
