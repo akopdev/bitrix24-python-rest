@@ -57,7 +57,7 @@ List methods return all available items at once. For large collections of data u
 
 ## Development
 
-New contributers and pull requests are welcome. If you have any questions or suggestions, feel free to open an issue.
+New contributors and pull requests are welcome. If you have any questions or suggestions, feel free to open an issue.
 
 Code comes with makefile for easy code base management. You can check `make help` for more details.
 

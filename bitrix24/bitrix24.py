@@ -48,7 +48,8 @@ class Bitrix24:
         self._retry_after = int(retry_after)
         self._verify_ssl = bool(safe)
 
-    def _prepare_domain(self, domain: str) -> str:
+    @staticmethod
+    def _prepare_domain(domain: str) -> str:
         """Normalize user passed domain to a valid one."""
         o = urlparse(domain)
         if not o.scheme or not o.netloc:
@@ -114,7 +115,7 @@ class Bitrix24:
                 return response
 
     async def _call(
-        self, method: str, params: Dict[str, Any] = {}, start: int = 0
+        self, method: str, params: Dict[str, Any] = None, start: int = 0
     ) -> Dict[str, Any]:
         """Async call a REST method with specified parameters.
 
@@ -124,6 +125,8 @@ class Bitrix24:
             params (dict): Optional arguments which will be converted to a POST request string
             start (int): Offset for pagination
         """
+        if params is None:
+            params = {}
         params["start"] = start
 
         payload = self._prepare_params(params)
@@ -138,7 +141,7 @@ class Bitrix24:
             return res["result"] + result
         return res["result"]
 
-    def callMethod(self, method: str, params: Dict[str, Any] = {}, **kwargs) -> Dict[str, Any]:
+    def callMethod(self, method: str, params: Dict[str, Any] = None, **kwargs) -> Dict[str, Any]:
         """Call a REST method with specified parameters.
 
         Parameters
@@ -150,6 +153,10 @@ class Bitrix24:
         -------
             Returning the REST method response as an array, an object or a scalar
         """
+
+        if params is None:
+            params = {}
+
         if not method:
             raise BitrixError("Wrong method name", 400)
 
@@ -158,14 +165,16 @@ class Bitrix24:
         except RuntimeError:
             warnings.warn(
                 "You are using `callMethod` method in a synchronous way. "
-                "Starting from version 3, this method will be completly asynchronous."
+                "Starting from version 3, this method will be completely asynchronous."
                 "Please consider updating your code",
                 DeprecationWarning,
             )
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(self._call(method, params or kwargs))
-            loop.close()
+            try:
+                result = loop.run_until_complete(self._call(method, params or kwargs))
+            finally:
+                loop.close()
         else:
             result = asyncio.ensure_future(self._call(method, params or kwargs))
         return result
