@@ -115,7 +115,7 @@ class Bitrix24:
                 return response
 
     async def _call(
-        self, method: str, params: Dict[str, Any] = None, start: int = 0
+            self, method: str, params: Dict[str, Any] = None, start: int = 0
     ) -> Dict[str, Any]:
         """Async call a REST method with specified parameters.
 
@@ -133,12 +133,21 @@ class Bitrix24:
         res = await self.request(method, payload)
 
         if "next" in res and not start and self._fetch_all_pages:
+            if res["total"] % 50 == 0:
+                count_tasks = res["total"] // 50 - 1
+            else:
+                count_tasks = res["total"] // 50
+
             tasks = [
-                self._call(method, params, (s + 1) * 50) for s in range(res["total"] // 50 - 1)
+                self._call(method, params, (s + 1) * 50) for s in range(count_tasks)
             ]
             items = await asyncio.gather(*tasks)
-            result = list(itertools.chain(*items))
-            return res["result"] + result
+            if type(res["result"]) is not dict:
+                return res["result"] + list(itertools.chain(*items))
+            if items:
+                key = list(res["result"].keys())[0]
+                for item in items:
+                    res["result"][key] += item[key]
         return res["result"]
 
     def callMethod(self, method: str, params: Dict[str, Any] = None, **kwargs) -> Dict[str, Any]:
