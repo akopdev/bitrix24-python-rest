@@ -11,7 +11,8 @@ import warnings
 from typing import Any, Dict
 from urllib.parse import urlparse
 
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector, hdrs
+from aiohttp.web_exceptions import HTTPMethodNotAllowed
 
 from .exceptions import BitrixError
 
@@ -95,42 +96,57 @@ class Bitrix24:
                         ret += "{0}={1}&".format(key, value)
         return ret
 
-    async def request(self, method: str, params: str = None) -> Dict[str, Any]:
+    async def request(self, http_method: str, method: str, params: str = None) -> Dict[str, Any]:
+        http_method = http_method.upper().strip()
+
         ssl_context = ssl.create_default_context()
         if not self._verify_ssl:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
+
         async with ClientSession(connector=TCPConnector(ssl=ssl_context)) as session:
-            async with session.get(
-                f"{self._domain}/{method}.json", params=params, timeout=self._timeout
-            ) as resp:
+            url = f"{self._domain}/{method}.json"
+            if http_method == hdrs.METH_GET:
+                req = session.get(url, params=params, timeout=self._timeout)
+            elif http_method == hdrs.METH_POST:
+                req = session.post(url, data=params, timeout=self._timeout)
+            else:
+                allowed_methods = {hdrs.METH_GET, hdrs.METH_POST}
+                raise HTTPMethodNotAllowed(http_method, allowed_methods)
+
+            async with req as resp:
                 if resp.status not in [200, 201]:
                     raise BitrixError(f"HTTP error: {resp.status}")
                 response = await resp.json()
                 if "error" in response:
                     if response["error"] == "QUERY_LIMIT_EXCEEDED":
                         await asyncio.sleep(self._retry_after)
-                        return await self.request(method, params)
+                        return await self.request(http_method, method, params)
                     raise BitrixError(response["error_description"], response["error"])
                 return response
 
     async def _call(
-            self, method: str, params: Dict[str, Any] = None, start: int = 0
+            self,
+            http_method: str,
+            method: str,
+            params: Dict[str, Any] = None,
+            start: int = 0
     ) -> Dict[str, Any]:
         """Async call a REST method with specified parameters.
 
         Parameters
         ----------
-            method (str): REST method name
-            params (dict): Optional arguments which will be converted to a POST request string
-            start (int): Offset for pagination
+            http_method (str):  HTTP method name
+            method      (str):  REST method name
+            params      (dict): Optional arguments which will be converted to a POST request string
+            start       (int):  Offset for pagination
         """
         if params is None:
             params = {}
         params["start"] = start
 
         payload = self._prepare_params(params)
-        res = await self.request(method, payload)
+        res = await self.request(http_method, method, payload)
 
         if "next" in res and not start and self._fetch_all_pages:
             if res["total"] % 50 == 0:
@@ -139,7 +155,7 @@ class Bitrix24:
                 count_tasks = res["total"] // 50
 
             tasks = [
-                self._call(method, params, (s + 1) * 50) for s in range(count_tasks)
+                self._call(http_method, method, params, (s + 1) * 50) for s in range(count_tasks)
             ]
             items = await asyncio.gather(*tasks)
             if type(res["result"]) is not dict:
@@ -150,13 +166,20 @@ class Bitrix24:
                     res["result"][key] += item[key]
         return res["result"]
 
-    def callMethod(self, method: str, params: Dict[str, Any] = None, **kwargs) -> Dict[str, Any]:
+    def callMethod(
+            self,
+            method: str,
+            params: Dict[str, Any] = None,
+            http_method: str = hdrs.METH_GET,
+            **kwargs,
+    ) -> Dict[str, Any]:
         """Call a REST method with specified parameters.
 
         Parameters
         ----------
-            method (str): REST method name
-            params (dict): Optional arguments which will be converted to a POST request string
+            method      (str):  REST method name
+            params      (dict): Optional arguments which will be converted to a POST request string
+            http_method (str):  HTTP method name (GET, POST, etc.)
 
         Returns
         -------
@@ -169,7 +192,7 @@ class Bitrix24:
             raise BitrixError("Wrong method name", 400)
 
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
             warnings.warn(
                 "You are using `callMethod` method in a synchronous way. "
@@ -180,9 +203,9 @@ class Bitrix24:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                result = loop.run_until_complete(self._call(method, params or kwargs))
+                result = loop.run_until_complete(self._call(http_method, method, params or kwargs))
             finally:
                 loop.close()
         else:
-            result = asyncio.ensure_future(self._call(method, params or kwargs))
+            result = asyncio.ensure_future(self._call(http_method, method, params or kwargs))
         return result
